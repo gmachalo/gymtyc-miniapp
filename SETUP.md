@@ -9,21 +9,100 @@
 
 ## Database Setup
 
-### Option 1: Supabase (Recommended)
+### ⚠️ CRITICAL: DATABASE_URL Must Be Set First
 
-1. Go to [supabase.com](https://supabase.com)
-2. Create a new project
-3. Copy the PostgreSQL connection string from Settings → Database
-4. Set it as `DATABASE_URL` in your `.env.local`
+If you see error `P1013: The provided database string is invalid`, your `DATABASE_URL` is either:
+- Missing from `.env.local`
+- Malformed (wrong format)
+- Using wrong database provider
 
-### Option 2: Local PostgreSQL
+The correct format is:
+```
+postgresql://username:password@host:port/database
+```
+
+**Choose ONE option below:**
+
+### Option 1: Supabase (Recommended - Free)
+
+1. Go to [supabase.com](https://supabase.com) and sign up
+2. Create new project
+   - Save your database password safely
+   - Wait for initialization (2-3 minutes)
+3. Once ready, click **Project Settings** (bottom left)
+4. Go to **Database** tab
+5. Look for **Connection String** section
+6. Click on **URI** tab (important!)
+7. Copy the connection string
+8. Open `.env.local` and paste as `DATABASE_URL`:
+   ```
+   DATABASE_URL="postgresql://postgres.YOUR_PROJECT_REF:YOUR_PASSWORD@aws-0-us-east-1.pooling.supabase.com:6543/postgres"
+   ```
+   - Replace `YOUR_PROJECT_REF` with your project reference
+   - Replace `YOUR_PASSWORD` with your database password
+   - **Keep `?schema=public` at the end if present**
+
+9. Save the file and run:
+   ```bash
+   npx prisma migrate dev
+   ```
+
+### Option 2: Local PostgreSQL (Development)
+
+**Install PostgreSQL:**
+- macOS: `brew install postgresql && brew services start postgresql`
+- Windows: Download from [postgresql.org](https://www.postgresql.org/download/windows/)
+- Linux: `sudo apt-get install postgresql`
+
+**Create database:**
+```bash
+createdb gymtyc_miniapp
+```
+
+**Add to `.env.local`:**
+```
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/gymtyc_miniapp"
+```
+
+**Run migrations:**
+```bash
+npx prisma migrate dev
+```
+
+### Option 3: Docker (Quickest Setup)
 
 ```bash
-# Create local database
-createdb gymtyc_miniapp
+# Create docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gymtyc_miniapp
+    ports:
+      - "5432:5432"
+EOF
 
-# Get connection string
-DATABASE_URL="postgresql://user:password@localhost:5432/gymtyc_miniapp"
+# Start database
+docker-compose up -d
+
+# Add to .env.local
+echo 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/gymtyc_miniapp"' >> .env.local
+
+# Initialize
+npx prisma migrate dev
+```
+
+### Verify Connection
+
+After setting DATABASE_URL, verify it works:
+```bash
+npx prisma db push
+# OR
+npx prisma studio  # Opens web UI to see database
 ```
 
 ## Environment Setup
