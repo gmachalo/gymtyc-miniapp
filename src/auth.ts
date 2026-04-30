@@ -61,17 +61,24 @@ const providers: any[] = [
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
+  adapter: !devProvider ? PrismaAdapter(prisma) : undefined,
+  session: { strategy: "jwt" },
+  secret: process.env.AUTH_SECRET,
   providers,
   pages: {
     signIn: "/login",
     error: "/login",
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user?.id) {
-        session.user.id = user.id;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
       }
       return session;
     },
@@ -82,10 +89,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
-    async createUser({ user }) {
-      if (user.id) {
+    async signIn({ user }) {
+      if (user.id && devProvider) {
+        // Ensure streak exists for dev login
         await prisma.streak
-          .create({ data: { userId: user.id } })
+          .findUnique({ where: { userId: user.id } })
+          .then(async (streak) => {
+            if (!streak) {
+              await prisma.streak.create({ data: { userId: user.id } });
+            }
+          })
           .catch(() => {});
       }
     },
