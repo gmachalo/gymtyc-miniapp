@@ -30,36 +30,132 @@ const BODY_TYPES = [
   },
 ];
 
-const STEPS = ["Welcome", "Body Type", "Character", "Plan", "Done"];
+const WORKOUT_PLANS = [
+  {
+    id: "strength",
+    name: "Iron Foundations",
+    type: "STRENGTH",
+    icon: "🏋️",
+    desc: "Compound lifts. Maximum strength gains.",
+    color: "#ff4d6d",
+  },
+  {
+    id: "fatloss",
+    name: "Lean Machine",
+    type: "FAT_LOSS",
+    icon: "🔥",
+    desc: "HIIT + cardio. Burn fat fast.",
+    color: "#ff6b35",
+  },
+  {
+    id: "hybrid",
+    name: "Athlete Protocol",
+    type: "HYBRID",
+    icon: "⚡",
+    desc: "Strength + conditioning. Balanced gains.",
+    color: "#6c47ff",
+  },
+  {
+    id: "calisthenics",
+    name: "Body Control",
+    type: "CALISTHENICS",
+    icon: "🤸",
+    desc: "Bodyweight mastery. No equipment needed.",
+    color: "#00d4aa",
+  },
+];
+
+const GAME_MODES = [
+  {
+    mode: "SOLO",
+    emoji: "🏃",
+    label: "Solo",
+    desc: "Personal journey. Compete on global leaderboards.",
+    features: ["Personal rewards", "Global leaderboards", "Character ownership"],
+  },
+  {
+    mode: "SOCIAL",
+    emoji: "👥",
+    label: "Social",
+    desc: "Join friends. Build gyms together. Earn passive income.",
+    features: ["Gym co-ownership", "Friend challenges", "Profit sharing"],
+  },
+];
+
+const STEPS = ["Welcome", "Body Type", "Character", "Plan", "Mode", "Done"];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [charName, setCharName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const selectedBodyType = BODY_TYPES.find((b) => b.type === selectedType);
+  const selectedWorkoutPlan = WORKOUT_PLANS.find((p) => p.id === selectedPlan);
+  const selectedGameMode = GAME_MODES.find((m) => m.mode === selectedMode);
 
   const handleCreateCharacter = async () => {
-    if (!selectedType || !charName.trim()) return;
+    if (!selectedType || !charName.trim() || !selectedPlan || !selectedMode) return;
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/game/character", {
+      // Create character
+      const charRes = await fetch("/api/game/character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: charName.trim(), bodyType: selectedType }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        // Mark onboarding done
-        await fetch("/api/game/onboarding", { method: "POST" });
-        setStep(4);
-      } else {
-        setError(data.error ?? "Failed to create character");
+      const charData = await charRes.json();
+      if (!charRes.ok) {
+        setError(charData.error ?? "Failed to create character");
+        setLoading(false);
+        return;
       }
+
+      // Set workout plan (via assignment or creation)
+      if (selectedPlan && charData.character?.id) {
+        const workoutPlan = WORKOUT_PLANS.find(p => p.id === selectedPlan);
+        if (workoutPlan) {
+          try {
+            await fetch("/api/game/plans", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ characterId: charData.character.id, type: workoutPlan.type, name: workoutPlan.name }),
+            }).catch(() => {}); // Non-critical
+          } catch (err) {
+            console.log("[v0] Plan assignment skipped:", err);
+          }
+        }
+      }
+
+      // Set game mode
+      if (selectedMode) {
+        try {
+          await fetch("/api/game/mode", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: selectedMode }),
+          }).catch(() => {}); // Non-critical
+        } catch (err) {
+          console.log("[v0] Mode update skipped:", err);
+        }
+      }
+
+      // Mark onboarding done
+      try {
+        await fetch("/api/game/onboarding", { method: "POST" });
+      } catch (err) {
+        console.log("[v0] Onboarding mark skipped:", err);
+      }
+
+      setStep(5);
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+      console.error("[v0] Onboarding error:", err);
     } finally {
       setLoading(false);
     }
@@ -201,23 +297,134 @@ export default function OnboardingPage() {
               id="character-name-next"
               className="btn btn-primary"
               style={{ width: "100%", marginTop: "8px" }}
-              disabled={charName.trim().length < 2 || loading}
-              onClick={handleCreateCharacter}
+              disabled={charName.trim().length < 2}
+              onClick={() => setStep(3)}
             >
-              {loading ? "Creating..." : "Create Character →"}
+              Next →
             </button>
           </div>
         )}
 
-        {/* Step 4: Done */}
+        {/* Step 3: Choose Workout Plan */}
+        {step === 3 && (
+          <div style={{ width: "100%" }}>
+            <h2 style={{ fontSize: "24px", fontWeight: 800, textAlign: "center", margin: "0 0 8px" }}>
+              Pick Your Training Style
+            </h2>
+            <p style={{ color: "var(--text-secondary)", textAlign: "center", margin: "0 0 28px", fontSize: "14px" }}>
+              You can change anytime. Build your ideal physique your way.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
+              {WORKOUT_PLANS.map((plan) => (
+                <button
+                  key={plan.id}
+                  id={`plan-${plan.id}`}
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className={`body-type-card`}
+                  style={{
+                    border: `2px solid ${selectedPlan === plan.id ? plan.color : "var(--border-subtle)"}`,
+                    background: selectedPlan === plan.id ? `rgba(108,71,255,0.1)` : "var(--bg-card)",
+                    textAlign: "left",
+                    padding: "16px",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "32px" }}>{plan.icon}</span>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "15px" }}>{plan.name}</p>
+                      <p style={{ margin: "0 0 8px", fontSize: "13px", color: "var(--text-secondary)" }}>
+                        {plan.desc}
+                      </p>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                        {plan.type}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              id="plan-next"
+              className="btn btn-primary"
+              style={{ width: "100%" }}
+              disabled={!selectedPlan}
+              onClick={() => setStep(4)}
+            >
+              Next →
+            </button>
+          </div>
+        )}
+
+        {/* Step 4: Choose Game Mode */}
         {step === 4 && (
+          <div style={{ width: "100%" }}>
+            <h2 style={{ fontSize: "24px", fontWeight: 800, textAlign: "center", margin: "0 0 8px" }}>
+              Choose Your Game Mode
+            </h2>
+            <p style={{ color: "var(--text-secondary)", textAlign: "center", margin: "0 0 28px", fontSize: "14px" }}>
+              Wallet linking is always optional. You can change mode anytime.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
+              {GAME_MODES.map((gameMode) => (
+                <button
+                  key={gameMode.mode}
+                  id={`mode-${gameMode.mode.toLowerCase()}`}
+                  onClick={() => setSelectedMode(gameMode.mode)}
+                  className={`body-type-card`}
+                  style={{
+                    border: `2px solid ${selectedMode === gameMode.mode ? "#00d4aa" : "var(--border-subtle)"}`,
+                    background: selectedMode === gameMode.mode ? "rgba(0,212,170,0.1)" : "var(--bg-card)",
+                    textAlign: "left",
+                    padding: "16px",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "32px" }}>{gameMode.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "15px" }}>{gameMode.label}</p>
+                      <p style={{ margin: "0 0 8px", fontSize: "13px", color: "var(--text-secondary)" }}>
+                        {gameMode.desc}
+                      </p>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        {gameMode.features.map((feature) => (
+                          <span key={feature} className="badge badge-purple" style={{ fontSize: "10px" }}>
+                            ✓ {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              id="mode-next"
+              className="btn btn-primary"
+              style={{ width: "100%" }}
+              disabled={!selectedMode}
+              onClick={handleCreateCharacter}
+              title={!charName.trim() ? "Enter a character name" : ""}
+            >
+              {loading ? "Creating your character..." : "Start Your Journey →"}
+            </button>
+            {error && (
+              <p style={{ color: "#ff4d6d", fontSize: "13px", margin: "12px 0 0", textAlign: "center" }}>
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: Done */}
+        {step === 5 && (
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: "72px", margin: "0 0 24px", filter: "drop-shadow(0 0 20px gold)" }}>🎉</p>
             <h2 style={{ fontSize: "28px", fontWeight: 900, margin: "0 0 8px" }} className="gradient-text">
-              You&apos;re ready!
+              Welcome, {charName}!
             </h2>
-            <p style={{ color: "var(--text-secondary)", margin: "0 0 32px" }}>
-              Your character is live. Start training to earn your first GYMFIT tokens.
+            <p style={{ color: "var(--text-secondary)", margin: "0 0 32px", lineHeight: 1.6 }}>
+              Your character is live. Start training to earn GYMFIT tokens.<br />
+              Wallet linking is optional and can be done anytime.
             </p>
             <button
               id="onboard-finish"
@@ -225,7 +432,7 @@ export default function OnboardingPage() {
               style={{ width: "100%" }}
               onClick={() => router.push("/dashboard")}
             >
-              Enter Gym Tycoon 🏋️
+              Enter Gym Tycoon →
             </button>
           </div>
         )}

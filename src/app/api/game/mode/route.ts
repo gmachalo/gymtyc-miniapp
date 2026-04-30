@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
 
-// PATCH /api/game/mode — switch between SOLO and SOCIAL
-export async function PATCH(req: NextRequest) {
+// POST or PATCH /api/game/mode — switch between SOLO and SOCIAL
+async function setMode(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id)
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,4 +21,12 @@ export async function PATCH(req: NextRequest) {
   });
 
   return Response.json({ user });
+}
+
+export async function POST(req: NextRequest) {
+  return setMode(req);
+}
+
+export async function PATCH(req: NextRequest) {
+  return setMode(req);
 }
