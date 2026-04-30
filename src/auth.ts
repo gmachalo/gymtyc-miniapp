@@ -61,7 +61,7 @@ const providers: any[] = [
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: !devProvider ? PrismaAdapter(prisma) : undefined,
+  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
   providers,
@@ -90,8 +90,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async signIn({ user }) {
-      if (user.id && devProvider) {
-        // Ensure streak exists for dev login
+      if (user.id) {
+        // Ensure streak exists for all users
         await prisma.streak
           .findUnique({ where: { userId: user.id } })
           .then(async (streak) => {
