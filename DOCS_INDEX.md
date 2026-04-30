@@ -43,9 +43,19 @@
   - Copy to `.env.local` to get started
   - All required and optional variables documented
 
+### 🐛 Troubleshooting
+- **[TROUBLESHOOT_P1001.md](./TROUBLESHOOT_P1001.md)** - Can't reach database server
+  - Supabase project paused (most common)
+  - Wrong database credentials
+  - Network connectivity issues
+  - Connection pooling configuration
+
 ---
 
 ## By Problem
+
+### "P1001: Can't reach database server"
+→ See [TROUBLESHOOT_P1001.md](./TROUBLESHOOT_P1001.md) **(START HERE if you see this error)**
 
 ### "P1013: Invalid database string"
 → See [QUICKSTART.md](./QUICKSTART.md#youre-seeing-p1013-error)
@@ -53,8 +63,9 @@
 ### "DATABASE_URL is not set" 
 → See [DATABASE_SETUP.md](./DATABASE_SETUP.md)
 
-### "Dev login not working"
-→ See [AUTH_FIX.md](./AUTH_FIX.md#dev-login)
+### "Dev login not working / CredentialsSignin error"
+→ See [TROUBLESHOOT_P1001.md](./TROUBLESHOOT_P1001.md) first (usually database connection issue)
+→ If database is working, see [AUTH_FIX.md](./AUTH_FIX.md#dev-login)
 
 ### "PostgreSQL connection failed"
 → See [DATABASE_SETUP.md](./DATABASE_SETUP.md#troubleshooting)
