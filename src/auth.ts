@@ -33,23 +33,47 @@ const devProvider = isDev
         name:  { label: "Name",  type: "text",  placeholder: "Dev Trainer" },
       },
       async authorize(credentials) {
-        if (!credentials?.email) return null;
+        if (!credentials?.email) {
+          console.error("[v0] No email provided in dev login");
+          return null;
+        }
+        
         const email = String(credentials.email).toLowerCase().trim();
         const name  = String(credentials.name ?? "Dev Trainer").trim();
 
-        const user = await prisma.user.upsert({
-          where:  { email },
-          update: {},
-          create: {
-            email,
-            name,
-            displayName: name,
-            onboardingDone: false,
-            mode: "SOLO",
-          },
-        });
+        if (!email || email.length === 0) {
+          console.error("[v0] Email is empty after processing");
+          return null;
+        }
 
-        return { id: user.id, email: user.email ?? "", name: user.name };
+        try {
+          // First try to find existing user
+          let user = await prisma.user.findUnique({
+            where: { email },
+          });
+
+          // If not found, create new user
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                email,
+                name,
+                displayName: name,
+                onboardingDone: false,
+                mode: "SOLO",
+              },
+            });
+          }
+
+          return { 
+            id: user.id, 
+            email: user.email ?? "", 
+            name: user.name ?? name,
+          };
+        } catch (error) {
+          console.error("[v0] Dev login error:", error);
+          return null;
+        }
       },
     })
   : null;
@@ -92,14 +116,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       if (user.id) {
         // Ensure streak exists for all users
-        await prisma.streak
-          .findUnique({ where: { userId: user.id } })
-          .then(async (streak) => {
-            if (!streak) {
-              await prisma.streak.create({ data: { userId: user.id } });
-            }
-          })
-          .catch(() => {});
+        try {
+          const existingStreak = await prisma.streak.findUnique({
+            where: { userId: user.id },
+          });
+          if (!existingStreak) {
+            await prisma.streak.create({ data: { userId: user.id } });
+          }
+        } catch (error) {
+          console.error("[v0] Streak creation error:", error);
+        }
       }
     },
   },
