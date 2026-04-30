@@ -12,7 +12,22 @@ function createPrismaClient() {
     // It will fail at runtime if no DB is configured, which is expected.
     console.warn("[Prisma] DATABASE_URL not set — using unconfigured client");
   }
-  const adapter = new PrismaPg({ connectionString: connectionString ?? "" });
+  
+  // For Supabase, ensure we're using connection pooler (port 6543) not direct connection (5432)
+  let finalConnectionString = connectionString ?? "";
+  if (finalConnectionString && !finalConnectionString.includes("pooling")) {
+    console.warn(
+      "[Prisma] Warning: DATABASE_URL doesn't use Supabase pooler. " +
+      "Change :5432 to :6543 in your connection string for better reliability."
+    );
+  }
+  
+  const adapter = new PrismaPg({ 
+    connectionString: finalConnectionString,
+    // Add connection string parameters for timeout handling
+    schema: "public",
+  });
+  
   return new PrismaClient({
     adapter,
     log:

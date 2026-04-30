@@ -47,22 +47,31 @@ const devProvider = isDev
         }
 
         try {
+          // Wrap with timeout to handle slow database connections
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Database query timeout (30s)")), 30000)
+          );
+
           // First try to find existing user
-          let user = await prisma.user.findUnique({
-            where: { email },
-          });
+          let user = (await Promise.race([
+            prisma.user.findUnique({ where: { email } }),
+            timeoutPromise,
+          ])) as any;
 
           // If not found, create new user
           if (!user) {
-            user = await prisma.user.create({
-              data: {
-                email,
-                name,
-                displayName: name,
-                onboardingDone: false,
-                mode: "SOLO",
-              },
-            });
+            user = await Promise.race([
+              prisma.user.create({
+                data: {
+                  email,
+                  name,
+                  displayName: name,
+                  onboardingDone: false,
+                  mode: "SOLO",
+                },
+              }),
+              timeoutPromise,
+            ]);
           }
 
           return { 
@@ -72,6 +81,13 @@ const devProvider = isDev
           };
         } catch (error) {
           console.error("[v0] Dev login error:", error);
+          if (error instanceof Error && error.message.includes("timeout")) {
+            console.error(
+              "[v0] Database connection timed out. " +
+              "Make sure your DATABASE_URL uses Supabase Connection Pooler (port 6543), not direct connection (5432). " +
+              "See https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler"
+            );
+          }
           return null;
         }
       },
