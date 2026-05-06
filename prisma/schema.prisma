@@ -63,6 +63,10 @@ model User {
   offChainTokens  BigInt    @default(0)
   onChainSynced   Boolean   @default(false)
   onboardingDone  Boolean   @default(false)
+  currentXp       Int       @default(100)  // 0–100 visible bar
+  overflowXp      Int       @default(0)    // XP above 100, spendable
+  lastXpRegenAt   DateTime  @default(now())
+  restUntil       DateTime?               // null = not resting
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -193,6 +197,7 @@ model Gym {
   memberCount Int      @default(0)
   maxMembers  Int      @default(50)
   monthlyFee  BigInt   @default(100)
+  tier        Int      @default(1)   // 1–5
   nftTokenId  String?
   onChain     Boolean  @default(false)
   metadata    Json     @default("{}")

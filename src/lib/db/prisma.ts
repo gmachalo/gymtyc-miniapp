@@ -6,19 +6,16 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    // During build/type-gen without a real DB — return a stub-capable client
-    // It will fail at runtime if no DB is configured, which is expected.
+  const raw = process.env.DATABASE_URL;
+  if (!raw) {
     console.warn("[Prisma] DATABASE_URL not set — using unconfigured client");
   }
-  const adapter = new PrismaPg({ connectionString: connectionString ?? "" });
+  // Strip pgbouncer=true — it's a Prisma CLI param, not understood by the pg driver
+  const connectionString = (raw ?? "").replace(/[?&]pgbouncer=true/i, "").replace(/[?&]$/, "");
+  const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["error", "warn"]
-        : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }
 

@@ -3,8 +3,17 @@
  * Run: npx prisma db seed
  */
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import * as dotenv from "dotenv";
 
-const prisma = new PrismaClient();
+// Load env vars (Prisma CLI doesn't load Next.js env automatically)
+dotenv.config({ path: ".env" });
+dotenv.config({ path: ".env.local", override: true });
+
+const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "";
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
 
 async function main() {
   console.log("🌱 Seeding database...");
@@ -80,7 +89,7 @@ async function main() {
         reputation: 85,
         memberCount: 142,
         maxMembers: 200,
-        monthlyFee: 50n,
+        monthlyFee: BigInt(50),
         metadata: { tier: "starter", speciality: "strength" },
       },
     }),
@@ -95,7 +104,7 @@ async function main() {
         reputation: 78,
         memberCount: 98,
         maxMembers: 150,
-        monthlyFee: 60n,
+        monthlyFee: BigInt(60),
         metadata: { tier: "starter", speciality: "fat_loss" },
       },
     }),
@@ -110,7 +119,7 @@ async function main() {
         reputation: 95,
         memberCount: 67,
         maxMembers: 100,
-        monthlyFee: 120n,
+        monthlyFee: BigInt(120),
         metadata: { tier: "elite", speciality: "hybrid" },
       },
     }),
@@ -125,7 +134,7 @@ async function main() {
         reputation: 72,
         memberCount: 54,
         maxMembers: 80,
-        monthlyFee: 40n,
+        monthlyFee: BigInt(40),
         metadata: { tier: "starter", speciality: "calisthenics" },
       },
     }),
@@ -161,9 +170,9 @@ async function main() {
 
   // ── Equipment for system gyms ──────────────────────────────────────────────
   const gymEquipment = [
-    { name: "Power Rack", type: "strength", cost: 200n, statBonus: { strength: 0.05 } },
-    { name: "Treadmill", type: "cardio", cost: 150n, statBonus: { stamina: 0.05 } },
-    { name: "Dumbbells Set", type: "free_weights", cost: 100n, statBonus: { strength: 0.03 } },
+    { name: "Power Rack",    type: "strength",    cost: BigInt(200), statBonus: { strength: 0.05 } },
+    { name: "Treadmill",     type: "cardio",      cost: BigInt(150), statBonus: { stamina: 0.05 } },
+    { name: "Dumbbells Set", type: "free_weights", cost: BigInt(100), statBonus: { strength: 0.03 } },
   ];
 
   for (const gym of gyms) {
